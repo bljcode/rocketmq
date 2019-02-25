@@ -57,6 +57,11 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 import org.apache.rocketmq.remoting.netty.NettyRequestProcessor;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
+/**
+ * 处理client请求Netty的Proccessor;
+ * 通过接收Request的不同code进行不同的操作
+ * 配置、Broker、Topic 相关操作
+ */
 public class DefaultRequestProcessor implements NettyRequestProcessor {
     private static InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
@@ -74,6 +79,7 @@ public class DefaultRequestProcessor implements NettyRequestProcessor {
             log.debug("receive request, {} {} {}",
                 request.getCode(),
                 RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
+                    //request的toString已重写
                 request);
         }
 

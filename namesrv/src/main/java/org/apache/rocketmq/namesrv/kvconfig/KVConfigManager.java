@@ -28,12 +28,17 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.protocol.body.KVTable;
 import org.apache.rocketmq.namesrv.NamesrvController;
+
+/**
+ * namespace key value配置
+ */
 public class KVConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
     private final NamesrvController namesrvController;
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    // namepace - key - value
     private final HashMap<String/* Namespace */, HashMap<String/* Key */, String/* Value */>> configTable =
         new HashMap<String, HashMap<String, String>>();
 
@@ -44,12 +49,14 @@ public class KVConfigManager {
     public void load() {
         String content = null;
         try {
+            //读入字符串（json串）
             content = MixAll.file2String(this.namesrvController.getNamesrvConfig().getKvConfigPath());
         } catch (IOException e) {
             log.warn("Load KV config table exception", e);
         }
         if (content != null) {
             KVConfigSerializeWrapper kvConfigSerializeWrapper =
+                    //JSON形式转换
                 KVConfigSerializeWrapper.fromJson(content, KVConfigSerializeWrapper.class);
             if (null != kvConfigSerializeWrapper) {
                 this.configTable.putAll(kvConfigSerializeWrapper.getConfigTable());
@@ -60,6 +67,7 @@ public class KVConfigManager {
 
     public void putKVConfig(final String namespace, final String key, final String value) {
         try {
+            //写锁控制
             this.lock.writeLock().lockInterruptibly();
             try {
                 HashMap<String, String> kvTable = this.configTable.get(namespace);
@@ -68,7 +76,7 @@ public class KVConfigManager {
                     this.configTable.put(namespace, kvTable);
                     log.info("putKVConfig create new Namespace {}", namespace);
                 }
-
+                //the previous value associated with key, or null if there was no mapping for key
                 final String prev = kvTable.put(key, value);
                 if (null != prev) {
                     log.info("putKVConfig update config item, Namespace: {} Key: {} Value: {}",
@@ -83,10 +91,13 @@ public class KVConfigManager {
         } catch (InterruptedException e) {
             log.error("putKVConfig InterruptedException", e);
         }
-
+        //触发持久化
         this.persist();
     }
 
+    /**
+     * 持久化到文件
+     */
     public void persist() {
         try {
             this.lock.readLock().lockInterruptibly();
@@ -113,6 +124,7 @@ public class KVConfigManager {
 
     public void deleteKVConfig(final String namespace, final String key) {
         try {
+            //写锁控制
             this.lock.writeLock().lockInterruptibly();
             try {
                 HashMap<String, String> kvTable = this.configTable.get(namespace);
@@ -139,6 +151,7 @@ public class KVConfigManager {
                 if (null != kvTable) {
                     KVTable table = new KVTable();
                     table.setTable(kvTable);
+                    //实现是先转json再getBytes
                     return table.encode();
                 }
             } finally {
@@ -151,6 +164,9 @@ public class KVConfigManager {
         return null;
     }
 
+    /**
+     * 获取配置value
+     */
     public String getKVConfig(final String namespace, final String key) {
         try {
             this.lock.readLock().lockInterruptibly();
@@ -169,6 +185,9 @@ public class KVConfigManager {
         return null;
     }
 
+    /**
+     * 用于定期输出全部的配置
+     */
     public void printAllPeriodically() {
         try {
             this.lock.readLock().lockInterruptibly();

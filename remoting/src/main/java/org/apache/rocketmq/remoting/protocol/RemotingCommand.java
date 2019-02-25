@@ -109,13 +109,13 @@ public class RemotingCommand {
     public static RemotingCommand createResponseCommand(Class<? extends CommandCustomHeader> classHeader) {
         return createResponseCommand(RemotingSysResponseCode.SYSTEM_ERROR, "not set any response code", classHeader);
     }
-
+    //classHeader一个帮忙判断有哪些字段及相应字段不为空的类；例子在方法：decodeCommandCustomHeader
     public static RemotingCommand createResponseCommand(int code, String remark,
         Class<? extends CommandCustomHeader> classHeader) {
         RemotingCommand cmd = new RemotingCommand();
         cmd.markResponseType();
-        cmd.setCode(code);
         cmd.setRemark(remark);
+        cmd.setCode(code);
         setCmdVersion(cmd);
 
         if (classHeader != null) {
@@ -141,11 +141,18 @@ public class RemotingCommand {
         return decode(byteBuffer);
     }
 
+    /**
+     * 协议解析
+     * 4个字节|heder部分|body部分
+     *
+     */
     public static RemotingCommand decode(final ByteBuffer byteBuffer) {
         int length = byteBuffer.limit();
+        //读四个字节，下面看决定
         int oriHeaderLen = byteBuffer.getInt();
+        //转int
         int headerLength = getHeaderLength(oriHeaderLen);
-
+        //根据header长度取出对应的数据
         byte[] headerData = new byte[headerLength];
         byteBuffer.get(headerData);
 
@@ -177,12 +184,16 @@ public class RemotingCommand {
                 resultRMQ.setSerializeTypeCurrentRPC(type);
                 return resultRMQ;
             default:
+                //这里不抛异常？
                 break;
         }
 
         return null;
     }
 
+    /**
+     * 高八位决定SerializeType
+     */
     public static SerializeType getProtocolType(int source) {
         return SerializeType.valueOf((byte) ((source >> 24) & 0xFF));
     }
@@ -248,6 +259,7 @@ public class RemotingCommand {
             for (Field field : fields) {
                 if (!Modifier.isStatic(field.getModifiers())) {
                     String fieldName = field.getName();
+                    //?什么field能以this开头
                     if (!fieldName.startsWith("this")) {
                         try {
                             String value = this.extFields.get(fieldName);
@@ -261,7 +273,7 @@ public class RemotingCommand {
                             field.setAccessible(true);
                             String type = getCanonicalName(field.getType());
                             Object valueParsed;
-
+                            //根据类型和field从extmap中对应的值
                             if (type.equals(STRING_CANONICAL_NAME)) {
                                 valueParsed = value;
                             } else if (type.equals(INTEGER_CANONICAL_NAME_1) || type.equals(INTEGER_CANONICAL_NAME_2)) {

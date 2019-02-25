@@ -21,6 +21,8 @@ import org.apache.rocketmq.remoting.CommandCustomHeader;
 import org.apache.rocketmq.remoting.annotation.CFNotNull;
 import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 
+import java.lang.reflect.Field;
+
 public class PutKVConfigRequestHeader implements CommandCustomHeader {
     @CFNotNull
     private String namespace;
@@ -28,6 +30,12 @@ public class PutKVConfigRequestHeader implements CommandCustomHeader {
     private String key;
     @CFNotNull
     private String value;
+
+    private static String test1;
+
+    private final static String test2 = "test2";
+
+    private final String test3 = "test3";
 
     @Override
     public void checkFields() throws RemotingCommandException {
@@ -56,4 +64,18 @@ public class PutKVConfigRequestHeader implements CommandCustomHeader {
     public void setValue(String value) {
         this.value = value;
     }
+
+
+
+    public static void main(String[] args){
+        Field[] fields = PutKVConfigRequestHeader.class.getDeclaredFields();
+        for(Field field: fields){
+            System.out.println("fieldName:" + field.getName());
+
+        }
+
+
+    }
+
+
 }

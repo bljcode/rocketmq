@@ -45,6 +45,9 @@ import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.common.sysflag.TopicSysFlag;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 
+/**
+ * 保存数据的数据结构，HashMap存储，ReentrantReadWriteLock控制并发
+ */
 public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
@@ -741,6 +744,10 @@ public class RouteInfoManager {
     }
 }
 
+/**
+ * Broker存活信息
+ * 对应的主要有Channel和lastUpdateTimestamp
+ */
 class BrokerLiveInfo {
     private long lastUpdateTimestamp;
     private DataVersion dataVersion;
