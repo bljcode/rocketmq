@@ -106,25 +106,36 @@ public class BrokerController {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final InternalLogger LOG_PROTECTION = InternalLoggerFactory.getLogger(LoggerName.PROTECTION_LOGGER_NAME);
     private static final InternalLogger LOG_WATER_MARK = InternalLoggerFactory.getLogger(LoggerName.WATER_MARK_LOGGER_NAME);
+    //Broker自身的一些操作
     private final BrokerConfig brokerConfig;
     private final NettyServerConfig nettyServerConfig;
     private final NettyClientConfig nettyClientConfig;
+    //数据存储相关操作
     private final MessageStoreConfig messageStoreConfig;
+    //Offset相关操作
     private final ConsumerOffsetManager consumerOffsetManager;
     private final ConsumerManager consumerManager;
     private final ConsumerFilterManager consumerFilterManager;
     private final ProducerManager producerManager;
+    //扫描Consumer,Producer;FilterServer不活跃和关闭的
     private final ClientHousekeepingService clientHousekeepingService;
+    //NettyRequestProcessor处理Pull Request
     private final PullMessageProcessor pullMessageProcessor;
+    //hold request? 是什么场景
     private final PullRequestHoldService pullRequestHoldService;
+    //
     private final MessageArrivingListener messageArrivingListener;
     private final Broker2Client broker2Client;
+    //SubscriptionGroupConfig订阅相关
     private final SubscriptionGroupManager subscriptionGroupManager;
     private final ConsumerIdsChangeListener consumerIdsChangeListener;
+    //Rebalance 相关
     private final RebalanceLockManager rebalanceLockManager = new RebalanceLockManager();
+
     private final BrokerOuterAPI brokerOuterAPI;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "BrokerControllerScheduledThread"));
+    //从broker同步相关
     private final SlaveSynchronize slaveSynchronize;
     private final BlockingQueue<Runnable> sendThreadPoolQueue;
     private final BlockingQueue<Runnable> pullThreadPoolQueue;
@@ -138,6 +149,7 @@ public class BrokerController {
     private final List<SendMessageHook> sendMessageHookList = new ArrayList<SendMessageHook>();
     private final List<ConsumeMessageHook> consumeMessageHookList = new ArrayList<ConsumeMessageHook>();
     private MessageStore messageStore;
+    //remotingServer和fastRemotingServer 下面就是端口号-2而已？
     private RemotingServer remotingServer;
     private RemotingServer fastRemotingServer;
     private TopicConfigManager topicConfigManager;
@@ -150,11 +162,15 @@ public class BrokerController {
     private ExecutorService consumerManageExecutor;
     private ExecutorService endTransactionExecutor;
     private boolean updateMasterHAServerAddrPeriodically = false;
+    //Broker的一些统计，一天的消息量
     private BrokerStats brokerStats;
+    //网络地址相关
     private InetSocketAddress storeHost;
+    //cleanExpiredRequest
     private BrokerFastFailure brokerFastFailure;
     private Configuration configuration;
     private FileWatchService fileWatchService;
+    //根据上面配置的interval; TransactionalMessageService定期check,触发transactionalMessageCheckListener
     private TransactionalMessageCheckService transactionalMessageCheckService;
     private TransactionalMessageService transactionalMessageService;
     private AbstractTransactionalMessageCheckListener transactionalMessageCheckListener;
@@ -223,6 +239,8 @@ public class BrokerController {
     }
 
     public boolean initialize() throws CloneNotSupportedException {
+        //各个配置加载
+        //TopicConfigManager中decode
         boolean result = this.topicConfigManager.load();
 
         result = result && this.consumerOffsetManager.load();
@@ -235,9 +253,11 @@ public class BrokerController {
                     new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
                         this.brokerConfig);
                 this.brokerStats = new BrokerStats((DefaultMessageStore) this.messageStore);
-                //load plugin
+                //load plugin； MessageStorePluginContext就是一个把括号内的参数聚合的类
                 MessageStorePluginContext context = new MessageStorePluginContext(messageStoreConfig, brokerStatsManager, messageArrivingListener, brokerConfig);
+                //根据配置的类，构建一个messageStore实例
                 this.messageStore = MessageStoreFactory.build(context, this.messageStore);
+                //CommitLogDispatcherCalcBitMap中dispatch有一个bloom滤波器的简单实现
                 this.messageStore.getDispatcherList().addFirst(new CommitLogDispatcherCalcBitMap(this.brokerConfig, this.consumerFilterManager));
             } catch (IOException e) {
                 result = false;
@@ -252,11 +272,14 @@ public class BrokerController {
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
+
+            //一堆Executor执行Queue中的runnable任务
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
+                    //sendThreadPoolQueue这里
                 this.sendThreadPoolQueue,
                 new ThreadFactoryImpl("SendMessageThread_"));
 
@@ -265,6 +288,7 @@ public class BrokerController {
                 this.brokerConfig.getPullMessageThreadPoolNums(),
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
+                    //
                 this.pullThreadPoolQueue,
                 new ThreadFactoryImpl("PullMessageThread_"));
 
@@ -273,6 +297,7 @@ public class BrokerController {
                 this.brokerConfig.getQueryMessageThreadPoolNums(),
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
+                    //
                 this.queryThreadPoolQueue,
                 new ThreadFactoryImpl("QueryMessageThread_"));
 
@@ -285,6 +310,7 @@ public class BrokerController {
                 this.brokerConfig.getClientManageThreadPoolNums(),
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
+                    //
                 this.clientManagerThreadPoolQueue,
                 new ThreadFactoryImpl("ClientManageThread_"));
 
@@ -293,6 +319,7 @@ public class BrokerController {
                 this.brokerConfig.getHeartbeatThreadPoolNums(),
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
+                    //
                 this.heartbeatThreadPoolQueue,
                 new ThreadFactoryImpl("HeartbeatThread_", true));
 
@@ -307,11 +334,12 @@ public class BrokerController {
             this.consumerManageExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
-
+            //fastRemotingServer和remotingServer注册一堆处理器，其中有比较重要的处理get message
             this.registerProcessor();
 
             final long initialDelay = UtilAll.computNextMorningTimeMillis() - System.currentTimeMillis();
             final long period = 1000 * 60 * 60 * 24;
+            //一堆周期任务
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {

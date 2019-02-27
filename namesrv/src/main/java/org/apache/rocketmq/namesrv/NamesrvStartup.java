@@ -41,6 +41,20 @@ import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.srvutil.ShutdownHookThread;
 import org.slf4j.LoggerFactory;
 
+/**
+ * namesrv支持集群模式，但是每个namesrv之间相互独立不进行任何通信，
+ * 它的多点容灾通过producer/consumer在访问namesrv的时候轮询获取信息（当前节点访问失败就转向下一个）。    
+ * namesrv作为注册中心，负责接收broker定期的注册信息并维持在内存当中，没错namesrv是没有持久化功能的，
+ * 所有数据都保存在内存当中，broker的注册过程也是循环遍历所有namesrv进行注册。    
+ * namesrv通过提供对外接口给producer和consumer访问broker的路由信息，底层通过netty来实现。    
+ * namesrv对broker的存活检测机制：心跳机制即namesrv作为broker的server端定期接收broker的心跳信息，
+ * 超时无心跳就移除broker；连接异常检测机制即底层通过epoll的消息机制来检测连接的断开。
+    总结参考：
+ 作者：晴天哥_374
+ 链接：https://www.jianshu.com/p/5161c16a0a29
+ 來源：简书
+ 简书著作权归作者所有，任何形式的转载都请联系作者获得授权并注明出处。
+ */
 public class NamesrvStartup {
 
     private static InternalLogger log;

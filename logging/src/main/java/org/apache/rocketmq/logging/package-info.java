@@ -22,10 +22,10 @@ package org.apache.rocketmq.logging;
  file configuration and pattern layout configuration. Main forked files are
  followed as below:
  1. LoggingEvent
- 2. Logger
- 3. Layout
- 4. Level
- 5. AsyncAppender
+ 2. Logger 最上一层是 Logger 对象，该对象负责获取日志信息，并存储于一个分层的命名空间之中。
+ 3. Layout Layout 层提供了用于以各种风格格式化日志信息的对象，在发布日志信息之前，它为 appender 对象提供支持。
+ 4. Level Level 对象定义了日志信息的粒度和优先级。API 定义了七种级别：OFF、DEBUG、INFO、ERROR、WARN、FATAL、ALL。
+ 5. AsyncAppender Appender该对象位于分层架构中的较低一层，Appender 对象负责将日志信息发布到不同目的地，比如数据库、文件、控制台、Unix Syslog 等。
  6. FileAppender
  7. RollingFileAppender
  8. DailyRollingFileAppender

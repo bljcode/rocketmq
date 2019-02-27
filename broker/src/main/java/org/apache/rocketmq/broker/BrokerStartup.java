@@ -50,6 +50,7 @@ import static org.apache.rocketmq.remoting.netty.TlsSystemConfig.TLS_ENABLE;
 
 public class BrokerStartup {
     public static Properties properties = null;
+    //Commons-CLI 是一个开源项目，Java 的命令行参数解析库
     public static CommandLine commandLine = null;
     public static String configFile = null;
     public static InternalLogger log;
@@ -91,7 +92,7 @@ public class BrokerStartup {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_SNDBUF_SIZE)) {
-            NettySystemConfig.socketSndbufSize = 131072;
+            NettySystemConfig.socketSndbufSize = 131072;//128K
         }
 
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_RCVBUF_SIZE)) {
@@ -120,7 +121,7 @@ public class BrokerStartup {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
             }
-
+            //配置相关
             if (commandLine.hasOption('c')) {
                 String file = commandLine.getOptionValue('c');
                 if (file != null) {
@@ -161,7 +162,7 @@ public class BrokerStartup {
                     System.exit(-3);
                 }
             }
-
+            //Broker的角色
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
@@ -177,14 +178,16 @@ public class BrokerStartup {
                 default:
                     break;
             }
-
+            //实现HA的端口？
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
+            //日志相关
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
             configurator.setContext(lc);
             lc.reset();
             configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
-
+            //如果是打印就输出显示对应的配置，jar -- 这种命令行，每次运行都是运行一个jar？ 比如print后，程序退出了啊 System.exit(0)
+            //命令行两种？一种启动后输入-输出，然后特定命令退出； 另外一种就是运行一次解析一个？
             if (commandLine.hasOption('p')) {
                 InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.BROKER_CONSOLE_NAME);
                 MixAll.printObjectProperties(console, brokerConfig);
@@ -220,7 +223,7 @@ public class BrokerStartup {
                 controller.shutdown();
                 System.exit(-3);
             }
-
+            //系统停止时，调用controller的shutdown函数
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
                 private volatile boolean hasShutdown = false;
                 private AtomicInteger shutdownTimes = new AtomicInteger(0);

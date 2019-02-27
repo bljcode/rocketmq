@@ -350,6 +350,7 @@ public class MixAll {
                             } else {
                                 continue;
                             }
+                            //调用一下set方法，将属性设置到Object中
                             method.invoke(object, arg);
                         }
                     }
