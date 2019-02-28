@@ -268,12 +268,14 @@ public class BrokerController {
         result = result && this.messageStore.load();
 
         if (result) {
+            //Netty初始化
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
 
-            //一堆Executor执行Queue中的runnable任务
+            //一堆Executor执行Queue中的runnable任务;registerProcessor中带入到Processor中使用了
+            //sendMessage
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
@@ -282,7 +284,7 @@ public class BrokerController {
                     //sendThreadPoolQueue这里
                 this.sendThreadPoolQueue,
                 new ThreadFactoryImpl("SendMessageThread_"));
-
+            //pullMessage
             this.pullMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getPullMessageThreadPoolNums(),
                 this.brokerConfig.getPullMessageThreadPoolNums(),
@@ -291,7 +293,7 @@ public class BrokerController {
                     //
                 this.pullThreadPoolQueue,
                 new ThreadFactoryImpl("PullMessageThread_"));
-
+            //queryMessage
             this.queryMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getQueryMessageThreadPoolNums(),
                 this.brokerConfig.getQueryMessageThreadPoolNums(),
@@ -334,6 +336,7 @@ public class BrokerController {
             this.consumerManageExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
+
             //fastRemotingServer和remotingServer注册一堆处理器，其中有比较重要的处理get message
             this.registerProcessor();
 
@@ -344,6 +347,7 @@ public class BrokerController {
                 @Override
                 public void run() {
                     try {
+                        //yesterday put/get message total
                         BrokerController.this.getBrokerStats().record();
                     } catch (Throwable e) {
                         log.error("schedule record error.", e);
@@ -355,6 +359,7 @@ public class BrokerController {
                 @Override
                 public void run() {
                     try {
+                        //config consumerOffset 定期持久化到文件
                         BrokerController.this.consumerOffsetManager.persist();
                     } catch (Throwable e) {
                         log.error("schedule persist consumerOffset error.", e);
@@ -366,6 +371,7 @@ public class BrokerController {
                 @Override
                 public void run() {
                     try {
+                        //持久化到文件
                         BrokerController.this.consumerFilterManager.persist();
                     } catch (Throwable e) {
                         log.error("schedule persist consumer filter error.", e);
@@ -377,6 +383,7 @@ public class BrokerController {
                 @Override
                 public void run() {
                     try {
+                        //consumer读的慢就禁止？？
                         BrokerController.this.protectBroker();
                     } catch (Throwable e) {
                         log.error("protectBroker error.", e);
@@ -388,6 +395,7 @@ public class BrokerController {
                 @Override
                 public void run() {
                     try {
+                        //定时打印一些queue的size、和任务延迟时间数据
                         BrokerController.this.printWaterMark();
                     } catch (Throwable e) {
                         log.error("printWaterMark error.", e);
@@ -400,6 +408,7 @@ public class BrokerController {
                 @Override
                 public void run() {
                     try {
+                        //number of the bytes that have been stored in commit log and not yet dispatched to consume queue
                         log.info("dispatch behind commit log {} bytes", BrokerController.this.getMessageStore().dispatchBehindBytes());
                     } catch (Throwable e) {
                         log.error("schedule dispatchBehindBytes error.", e);
@@ -416,6 +425,7 @@ public class BrokerController {
                     @Override
                     public void run() {
                         try {
+                            //定时获取Namesrv的地址
                             BrokerController.this.brokerOuterAPI.fetchNameServerAddr();
                         } catch (Throwable e) {
                             log.error("ScheduledTask fetchNameServerAddr exception", e);
@@ -423,7 +433,7 @@ public class BrokerController {
                     }
                 }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
             }
-
+            //如果Broker是从角色
             if (BrokerRole.SLAVE == this.messageStoreConfig.getBrokerRole()) {
                 if (this.messageStoreConfig.getHaMasterAddress() != null && this.messageStoreConfig.getHaMasterAddress().length() >= 6) {
                     this.messageStore.updateHaMasterAddress(this.messageStoreConfig.getHaMasterAddress());
@@ -437,6 +447,7 @@ public class BrokerController {
                     @Override
                     public void run() {
                         try {
+                            //同步
                             BrokerController.this.slaveSynchronize.syncAll();
                         } catch (Throwable e) {
                             log.error("ScheduledTask syncAll slave exception", e);
@@ -444,11 +455,13 @@ public class BrokerController {
                     }
                 }, 1000 * 10, 1000 * 60, TimeUnit.MILLISECONDS);
             } else {
+                //如果是主角色
                 this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
                     @Override
                     public void run() {
                         try {
+                            //打印number of bytes that slave falls behind
                             BrokerController.this.printMasterAndSlaveDiff();
                         } catch (Throwable e) {
                             log.error("schedule printMasterAndSlaveDiff error.", e);
@@ -456,7 +469,7 @@ public class BrokerController {
                     }
                 }, 1000 * 10, 1000 * 60, TimeUnit.MILLISECONDS);
             }
-
+            //tls 文件监听
             if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
                 // Register a listener to reload SslContext
                 try {
@@ -504,7 +517,16 @@ public class BrokerController {
         return result;
     }
 
+    /**
+     * RocketMQ事务消息实现
+     * 一个参考：http://wuwenliang.net/2018/12/13/%E6%88%91%E8%AF%B4%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E4%B9%8B%E6%B6%88%E6%81%AF%E4%B8%80%E8%87%B4%E6%80%A7%E4%BA%8B%E5%8A%A12-rocketmq%E7%9A%84%E5%AE%9E%E7%8E%B0/
+     */
     private void initialTransaction() {
+        /**
+         * 从用户侧来说，用户需要分别实现本地事务执行以及本地事务回查方法，因此只需关注本地事务的执行状态即可；而在service层，则对事务消息的两阶段提交进行了抽象，同时针对超时事务实现了回查逻辑，通过不断扫描当前事务推进状态，来不断反向请求Producer端获取超时事务的执行状态，在避免事务挂起的同时，也避免了Producer端的单点故障。而在存储层，
+         * RocketMQ通过Bridge封装了与底层队列存储的相关操作，用以操作两个对应的内部队列，用户也可以依赖其它他存储介质实现自己的service，
+         * RocketMQ会通过ServiceProvider加载进来
+         */
         this.transactionalMessageService = ServiceProvider.loadClass(ServiceProvider.TRANSACTION_SERVICE_ID, TransactionalMessageService.class);
         if (null == this.transactionalMessageService) {
             this.transactionalMessageService = new TransactionalMessageServiceImpl(new TransactionalMessageBridge(this, this.getMessageStore()));
@@ -518,7 +540,9 @@ public class BrokerController {
         this.transactionalMessageCheckListener.setBrokerController(this);
         this.transactionalMessageCheckService = new TransactionalMessageCheckService(this);
     }
-
+    /*
+     *访问控制权限
+     */
     private void initialAcl() {
         if (!this.brokerConfig.isAclEnable()) {
             log.info("The broker dose not enable acl");

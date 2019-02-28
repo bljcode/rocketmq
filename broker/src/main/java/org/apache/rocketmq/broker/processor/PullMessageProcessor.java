@@ -234,6 +234,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         }
 
         final GetMessageResult getMessageResult =
+                //获取消息
             this.brokerController.getMessageStore().getMessage(requestHeader.getConsumerGroup(), requestHeader.getTopic(),
                 requestHeader.getQueueId(), requestHeader.getQueueOffset(), requestHeader.getMaxMsgNums(), messageFilter);
         if (getMessageResult != null) {

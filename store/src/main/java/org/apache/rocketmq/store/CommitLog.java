@@ -41,6 +41,9 @@ import org.apache.rocketmq.store.schedule.ScheduleMessageService;
 
 /**
  * Store all metadata downtime for recovery, data protection reliability
+ * 重点： 存储消息的结构
+ *  commtLog的存储其实是分多层的，commitLog -> mappedFileQueue -> mappedFile，其中真正存储数据的是mappedFile
+ *
  */
 public class CommitLog {
     // Message's MAGIC CODE daa320a7
