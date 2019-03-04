@@ -40,6 +40,17 @@ import org.apache.rocketmq.remoting.common.RemotingUtil;
 import org.apache.rocketmq.store.CommitLog;
 import org.apache.rocketmq.store.DefaultMessageStore;
 
+/**
+ * HaService类实现了HA服务，负责同步双写，异步复制功能， 这个类master和slave的broker都会实例化，
+
+ Master通过AcceptSocketService监听slave的连接，每个masterslave连接都会构建一个HAConnection对象搭建他们之间的桥梁，
+ 对于一个master多slave部署结构的会有多个HAConnection实例
+ ---------------------
+ 作者：斩秋
+ 来源：CSDN
+ 原文：https://blog.csdn.net/quhongwei_zhanqiu/article/details/39144469
+ 版权声明：本文为博主原创文章，转载请附上博文链接！
+ */
 public class HAService {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 

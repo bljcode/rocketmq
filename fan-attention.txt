@@ -1,1 +1,20 @@
+
+Broker:
 1.store 数据存储模块，CommitLog.java 入口；
+2.消息事务的实现 BrokerController.initialTransaction 入口
+3.获取消息 PullMessageProcessor.java line : 241 this.brokerController.getMessageStore().getMessage
+            -》DefaultMessageStore line：538 this.commitLog.getMessage CommitLog.java.getMessage -》mappedFile.selectMappedBuffer
+
+疑问：
+    1.namesrv 的inner logger的appender在哪里设置
+        --》InternalLoggerFactory.getLoggerFactory先取设置的，然后取默认的LOGGER_SLF4J（这里取的这个），
+            然后是Inner(而这里Inner似乎没有设置Appender)
+            inner log的使用可以参考InnerLoggerFactoryTest， 有初始化设置appender;test可以帮助理解；
+        --》原本写的异步写文件的程序，可以用appender的方式解耦和提高扩展性
+
+    2.rocketmq中大量数据的传输为了提高效率直接nio,其他的基于netty?
+        看到一句总结：Master、Slave直接通过原生的nio进行调用，其他通讯都是基于netty-all-4.0.36.Final以及RocketMQ自定义协议进行通讯的。
+        BrokerController-》SlaveSynchronize.java Slave启动的时候brokerController开启定时任务定时拷贝master的配置信息
+        DefaultMessageStore-》HAService.java  HAConnection.ReadSocketService HAConnection.WriteSocketService? 负责同步双写，异步复制功能
+        https://blog.csdn.net/quhongwei_zhanqiu/article/details/39144469
+

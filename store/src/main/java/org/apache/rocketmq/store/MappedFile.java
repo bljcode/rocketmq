@@ -161,6 +161,17 @@ public class MappedFile extends ReferenceResource {
 
         try {
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
+            /**
+             * 其实就是一种快速读写技术，它将通道所连接的数据节点中的全部或部分数据直接映射到内存的一个Buffer中，
+             * 而这个内存Buffer块就是节点数据的映像，你直接对这个Buffer进行修改会直接影响到节点数据，而这个Buffer也不是普通的Buffer，
+             * 叫做MappedBuffer，即镜像Buffer，对该Buffer进行修改会直接影响到实际的节点（更新到节点）其实NIO通道映射技术最大的受益者就是RandomAccessFile
+             * 根据读写权限，分三种模式；
+             * i. FileChannel.MapMode.READ_ONLY：得到的镜像只能读不能写（只能使用get之类的读取Buffer中的内容）；
+
+             ii. FileChannel.MapMode.READ_WRITE：得到的镜像可读可写（既然可写了必然可读），对其写会直接更改到存储节点；
+
+             iii. FileChannel.MapMode.PRIVATE：得到一个私有的镜像，其实就是一个(position, size)区域的副本罢了，也是可读可写，只不过写不会影响到存储节点，就是一个普通的ByteBuffer了！！
+             */
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
             TOTAL_MAPPED_FILES.incrementAndGet();
@@ -205,6 +216,7 @@ public class MappedFile extends ReferenceResource {
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
+            //slice()方法会返回一个新的buffer，但是新的bf2和源对象bf引用的是同一个！！！！也就是bf2的改变会改变bf
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result = null;

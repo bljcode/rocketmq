@@ -268,6 +268,7 @@ public class HAConnection {
                     }
 
                     SelectMappedBufferResult selectResult =
+                            //从上面决定的位置获取对应的数据
                         HAConnection.this.haService.getDefaultMessageStore().getCommitLogData(this.nextTransferFromWhere);
                     if (selectResult != null) {
                         int size = selectResult.getSize();

@@ -67,10 +67,11 @@ public class Logger implements Appender.AppenderPipeline {
 
     public void callAppenders(LoggingEvent event) {
         int writes = 0;
-
+        //logger有parent时，都打印？
         for (Logger logger = this; logger != null; logger = logger.parent) {
             synchronized (logger) {
                 if (logger.appenderPipeline != null) {
+                    //一条日志，可能多个appender来打印到不同的地方；
                     writes += logger.appenderPipeline.appendLoopOnAppenders(event);
                 }
                 if (!logger.additive) {

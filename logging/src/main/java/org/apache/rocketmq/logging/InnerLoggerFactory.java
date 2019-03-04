@@ -186,6 +186,7 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         public FormattingTuple(String message, Object[] argArray, Throwable throwable) {
             this.message = message;
             this.throwable = throwable;
+            //throwable非空为啥这么处理？
             if (throwable == null) {
                 this.argArray = argArray;
             } else {
@@ -193,7 +194,7 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
             }
 
         }
-
+        //转成一个实际长度的数组
         static Object[] trimmedCopy(Object[] argArray) {
             if (argArray != null && argArray.length != 0) {
                 int trimemdLen = argArray.length - 1;
@@ -230,7 +231,7 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         public static FormattingTuple format(String messagePattern, Object arg1, Object arg2) {
             return arrayFormat(messagePattern, new Object[]{arg1, arg2});
         }
-
+        //数组最后一个是不是Throwable
         static Throwable getThrowableCandidate(Object[] argArray) {
             if (argArray != null && argArray.length != 0) {
                 Object lastEntry = argArray[argArray.length - 1];

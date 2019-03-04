@@ -39,6 +39,7 @@ public class InnerLoggerFactoryTest extends BasicLoggerTest {
 
     @Before
     public void initLogger() {
+        //注意，这里更改了System.out，
         out = System.out;
         byteArrayOutputStream = new ByteArrayOutputStream();
         System.setOut(new PrintStream(byteArrayOutputStream));
@@ -55,6 +56,7 @@ public class InnerLoggerFactoryTest extends BasicLoggerTest {
 
     @After
     public void fixConsole() {
+        //修正回来
         System.setOut(out);
     }
 
@@ -80,8 +82,11 @@ public class InnerLoggerFactoryTest extends BasicLoggerTest {
         logger3.warn("logger3 warn");
         logger3.error("error {}", "hahahah");
         logger3.debug("debug {}", "hahahah");
-
+        //试验Systemout打印不出来
+        //System.out.println("--------------------");
         String content = new String(byteArrayOutputStream.toByteArray());
+        //这里不加System.setOut(out);修正回来又打回byteArrayOutputStream了吧，
+        System.setOut(out);// fan 加的
         System.out.println(content);
 
         Assert.assertTrue(content.contains("InnerLoggerFactoryTest"));

@@ -28,6 +28,22 @@ import org.apache.rocketmq.common.protocol.body.SubscriptionGroupWrapper;
 import org.apache.rocketmq.common.protocol.body.TopicConfigSerializeWrapper;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
 
+/**
+ * SlaveSynchronize类代表slave从master同步信息（非消息，配置信息）
+
+          syncTopicConfig       同步topic的配置信息
+
+          syncConsumerOffset       同步消费进度
+
+          syncDelayOffset                同步定时进度
+
+          syncSubcriptionGroupConfig  同步订阅组配
+ ---------------------
+ 作者：斩秋
+ 来源：CSDN
+ 原文：https://blog.csdn.net/quhongwei_zhanqiu/article/details/39144469
+ 版权声明：本文为博主原创文章，转载请附上博文链接！
+ */
 public class SlaveSynchronize {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;

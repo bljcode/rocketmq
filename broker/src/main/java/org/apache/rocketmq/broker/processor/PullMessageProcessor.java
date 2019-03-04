@@ -66,6 +66,9 @@ import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
 
+/**
+ * 处理消息拉取的Processor比较重要
+ */
 public class PullMessageProcessor implements NettyRequestProcessor {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -254,6 +257,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                 case SYNC_MASTER:
                     break;
                 case SLAVE:
+                    //从角色，是否允许读
                     if (!this.brokerController.getBrokerConfig().isSlaveReadEnable()) {
                         response.setCode(ResponseCode.PULL_RETRY_IMMEDIATELY);
                         responseHeader.setSuggestWhichBrokerId(MixAll.MASTER_ID);
@@ -382,6 +386,8 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                         this.brokerController.getBrokerStatsManager().incGroupGetLatency(requestHeader.getConsumerGroup(),
                             requestHeader.getTopic(), requestHeader.getQueueId(),
                             (int) (this.brokerController.getMessageStore().now() - beginTimeMills));
+
+                        //设置返回结果
                         response.setBody(r);
                     } else {
                         try {

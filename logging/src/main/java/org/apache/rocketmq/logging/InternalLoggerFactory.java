@@ -61,6 +61,7 @@ public abstract class InternalLoggerFactory {
     }
 
     static {
+        //子类中有doRegister，所以 new 过程中会把 Slf4jLoggerFactory和InnerLoggerFactory doRegister；
         try {
             new Slf4jLoggerFactory();
         } catch (Throwable e) {
