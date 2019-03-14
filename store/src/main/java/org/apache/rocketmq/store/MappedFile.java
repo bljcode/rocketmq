@@ -41,6 +41,9 @@ import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
+/**
+ * CommitLog.java-putMessages方法入口看
+ */
 public class MappedFile extends ReferenceResource {
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -57,13 +60,18 @@ public class MappedFile extends ReferenceResource {
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
-    protected ByteBuffer writeBuffer = null;
+    protected ByteBuffer writeBuffer = null;////从transientStorePool的池中拿到ByteBuffer，可能为null
+    //暂存的线程池
     protected TransientStorePool transientStorePool = null;
+    //fileFromOffset就是文件名称，一般为20位数字,代表这个文件开始时的offset
     private String fileName;
     private long fileFromOffset;
     private File file;
+    // a memory-mapped region of a file,提高操作文件的效率
     private MappedByteBuffer mappedByteBuffer;
+
     private volatile long storeTimestamp = 0;
+
     private boolean firstCreateInQueue = false;
 
     public MappedFile() {
@@ -88,9 +96,21 @@ public class MappedFile extends ReferenceResource {
         }
     }
 
+    /**
+     *  清理mappedByteBuffer
+     * 如果是directByteBuffer且容量不为0
+     * 则获取attachment转成directByteBuffer，调用其clearner.clean方法
+     * @param buffer
+     */
     public static void clean(final ByteBuffer buffer) {
         if (buffer == null || !buffer.isDirect() || buffer.capacity() == 0)
             return;
+        /**
+         * 下面这段是
+         * 嵌套拿到directByteBuffer的最内部的attachment，强制转换成ByteBuffer对象(实际运行应该会是directByteBuffer)
+         * 然后获得directByteBuffer的Cleaner对象 cleaner
+         * 然后调用cleaner.clean方法，进行深度的释放资源
+         */
         invoke(invoke(viewed(buffer), "cleaner"), "clean");
     }
 
@@ -146,6 +166,7 @@ public class MappedFile extends ReferenceResource {
     public void init(final String fileName, final int fileSize,
         final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
+        //从transientStorePool获取一个ByteBuffer
         this.writeBuffer = transientStorePool.borrowBuffer();
         this.transientStorePool = transientStorePool;
     }
@@ -154,6 +175,7 @@ public class MappedFile extends ReferenceResource {
         this.fileName = fileName;
         this.fileSize = fileSize;
         this.file = new File(fileName);
+        //TODO: ??这里是啥;因为mapedfile命名都是数字固定位移
         this.fileFromOffset = Long.parseLong(this.file.getName());
         boolean ok = false;
 
@@ -429,6 +451,12 @@ public class MappedFile extends ReferenceResource {
         return null;
     }
 
+    /**
+     * 清理，监视是否可用，是否已经清理过，条件适当进行清理
+     * 更新内存记录以及文件数记录
+     * @param currentRef
+     * @return
+     */
     @Override
     public boolean cleanup(final long currentRef) {
         if (this.isAvailable()) {

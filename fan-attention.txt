@@ -5,6 +5,10 @@ Broker:
 3.获取消息 PullMessageProcessor.java line : 241 this.brokerController.getMessageStore().getMessage
             -》DefaultMessageStore line：538 this.commitLog.getMessage CommitLog.java.getMessage -》mappedFile.selectMappedBuffer
 
+4.put消息 SendMessageProcessor.java  sendMessage line361 --> DefaultMessageStore.putMessage line346
+        --> commitLog.putMessage(msg) line589 -->MappedFile.appendMessage
+
+
 疑问：
     1.namesrv 的inner logger的appender在哪里设置
         --》InternalLoggerFactory.getLoggerFactory先取设置的，然后取默认的LOGGER_SLF4J（这里取的这个），

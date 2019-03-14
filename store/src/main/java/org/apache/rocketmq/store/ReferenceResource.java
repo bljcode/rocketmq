@@ -18,6 +18,11 @@ package org.apache.rocketmq.store;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * MappedFile父类,作用是记录MappedFile中的引用次数
+    为正表示资源可用，刷盘前加一，
+    然后将wrotePosotion的值赋给committedPosition，再减一。
+ */
 public abstract class ReferenceResource {
     protected final AtomicLong refCount = new AtomicLong(1);
     protected volatile boolean available = true;
