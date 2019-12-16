@@ -122,13 +122,18 @@ public class MessageQueue implements Comparable<MessageQueue>, Serializable {
     public static void main(String[] args){
         List<MessageQueue> datas = new ArrayList<MessageQueue>();
         for(int j = 0; j < 3;++j){
-            for(int i = 0; i < 5; ++i){
-                MessageQueue data = new MessageQueue();
-                data.setBrokerName("fan" + j);
-                data.setQueueId(i);
-                data.setTopic("fan" + j);
-                datas.add(data);
+            String topic = "fan" + j;
+            for(int m = 0; m < 4; ++m){
+                String broker = "fan" + m;
+                for(int i = 0; i < 5; ++i){
+                    MessageQueue data = new MessageQueue();
+                    data.setBrokerName(broker);
+                    data.setQueueId(i);
+                    data.setTopic(topic);
+                    datas.add(data);
+                }
             }
+
         }
         Collections.sort(datas);
         System.out.println(datas);
